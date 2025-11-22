@@ -8,8 +8,14 @@ const USE_MOCK = !import.meta.env.VITE_FIREBASE_API_KEY || import.meta.env.VITE_
 console.log('🔍 Firebase Detection:', {
   hasApiKey: !!import.meta.env.VITE_FIREBASE_API_KEY,
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY?.substring(0, 20) + '...',
+  fullApiKey: import.meta.env.VITE_FIREBASE_API_KEY, // Full key for debugging
   USE_MOCK,
-  mode: USE_MOCK ? '🔴 MOCK MODE' : '🟢 FIREBASE MODE'
+  mode: USE_MOCK ? '🔴 MOCK MODE' : '🟢 FIREBASE MODE',
+  allEnvVars: {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID
+  }
 });
 
 import { loginParent as loginParentMock, loginChild as loginChildMock, logoutUser as logoutUserMock, getFamilyMembers as getFamilyMembersMock, createChildCode as createChildCodeMock, deleteChild as deleteChildMock, subscribeToFamily as subscribeToFamilyMock, createUser as createUserMock, MOCK_MEMBERS } from './services/mockServices';
