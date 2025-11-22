@@ -287,36 +287,54 @@ export const useWebRTC = (currentUserId: string, remoteUserId: string | null, is
   const answerCall = async (offerSignal: any, targetRemoteUserId?: string) => {
     const targetId = targetRemoteUserId || remoteUserId;
     
-    // Wait for connection to be initialized and media to be ready
-    let retries = 0;
-    while ((!peerConnection.current || peerConnection.current.signalingState === 'closed' || !isInitializedRef.current) && retries < 20) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      retries++;
-      console.log(`Waiting for peerConnection (retry ${retries}/20)...`);
-    }
-    
-    if (!peerConnection.current) {
-      console.warn('Cannot answer call: peerConnection is null after wait');
-      return;
-    }
-    
-    if (peerConnection.current.signalingState === 'closed') {
-      console.warn('Cannot answer call: peerConnection is closed');
-      return;
-    }
-    
     if (!targetId) {
       console.warn('Cannot answer call: missing remoteUserId');
       return;
     }
     
+    // Wait for connection to be initialized and media to be ready
+    let retries = 0;
+    while ((!peerConnection.current || peerConnection.current.signalingState === 'closed' || !isInitializedRef.current) && retries < 30) {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      retries++;
+      if (retries % 5 === 0) {
+        console.log(`Waiting for peerConnection (retry ${retries}/30)...`);
+      }
+    }
+    
+    if (!peerConnection.current) {
+      console.error('Cannot answer call: peerConnection is null after wait');
+      return;
+    }
+    
+    if (peerConnection.current.signalingState === 'closed') {
+      console.error('Cannot answer call: peerConnection is closed');
+      return;
+    }
+    
+    // Ensure we have local media tracks before answering
+    if (!streamRef.current || streamRef.current.getTracks().length === 0) {
+      console.warn('No local media tracks, waiting for media initialization...');
+      // Wait a bit more for media
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
     try {
       console.log('Answering call with signal, connection state:', peerConnection.current.signalingState);
-      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offerSignal));
       
-      const answer = await peerConnection.current.createAnswer();
+      // Set remote description first
+      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offerSignal));
+      console.log('Remote description set');
+      
+      // Create and set local answer
+      const answer = await peerConnection.current.createAnswer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true
+      });
       await peerConnection.current.setLocalDescription(answer);
+      console.log('Local description set');
 
+      // Send answer
       socketService.emitCallAnswer({
         callerId: targetId,
         calleeId: currentUserId,
@@ -325,6 +343,7 @@ export const useWebRTC = (currentUserId: string, remoteUserId: string | null, is
       console.log('Answer sent to:', targetId);
     } catch (err) {
       console.error('Error answering call:', err);
+      throw err; // Re-throw so CallScreen can handle it
     }
   };
 

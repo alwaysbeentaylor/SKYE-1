@@ -58,20 +58,21 @@ const App: React.FC = () => {
   // --- Auth Observer (Firebase only) ---
   useEffect(() => {
     if (!USE_MOCK) {
+      let mounted = true;
       const unsubscribe = subscribeToAuth(async (firebaseUser) => {
+        if (!mounted) return;
+        
         if (firebaseUser) {
           // User is logged in - fetch user data from Firestore
           try {
             const user = await getUser(firebaseUser.uid);
-            if (user) {
+            if (mounted && user) {
               setCurrentUser(user);
               setView('HOME');
-            } else {
+            } else if (mounted) {
               // User exists in Firebase Auth but not in Firestore - might be anonymous child
-              // Check if it's an anonymous user (child login)
               if (firebaseUser.isAnonymous) {
                 // For anonymous users, we can't get user data directly
-                // They need to login with code again
                 setCurrentUser(null);
                 setView('LOGIN_SELECT');
               } else {
@@ -81,16 +82,26 @@ const App: React.FC = () => {
             }
           } catch (err) {
             console.error('Error fetching user data:', err);
-            setCurrentUser(null);
-            setView('LOGIN_SELECT');
+            if (mounted) {
+              setCurrentUser(null);
+              setView('LOGIN_SELECT');
+            }
           }
         } else {
           // No user logged in
-          setCurrentUser(null);
-          setView('LOGIN_SELECT');
+          if (mounted) {
+            setCurrentUser(null);
+            setView('LOGIN_SELECT');
+          }
         }
       });
-      return unsubscribe;
+      return () => {
+        mounted = false;
+        unsubscribe();
+      };
+    } else {
+      // Mock mode - always show login
+      setView('LOGIN_SELECT');
     }
   }, []);
 
