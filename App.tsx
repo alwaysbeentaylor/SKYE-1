@@ -371,12 +371,31 @@ const App: React.FC = () => {
 
   // CALL SCREEN
   if (view === 'CALL' || isIncomingCall) {
-    if (!currentUser || !activeCallUser) {
+    // Only check if we're in active call view (not incoming)
+    if (view === 'CALL' && (!currentUser || !activeCallUser)) {
       // Safety check - if we're in call view but missing data, go back to home
       setView('HOME');
       setIsIncomingCall(false);
       return null;
     }
+    
+    // For incoming calls, allow it even if activeCallUser is not set yet (it will be set by the handler)
+    if (isIncomingCall && !activeCallUser) {
+      // Wait a bit for the caller to be set
+      return (
+        <div className="fixed inset-0 z-50 bg-sky-900 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin w-12 h-12 border-4 border-sky-400 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-white font-bold">Oproep verbinden...</p>
+          </div>
+        </div>
+      );
+    }
+    
+    if (!currentUser || !activeCallUser) {
+      return null;
+    }
+    
     return (
       <CallScreen 
         currentUser={currentUser}
