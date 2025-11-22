@@ -59,7 +59,33 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!USE_MOCK) {
       const unsubscribe = subscribeToAuth(async (firebaseUser) => {
-        if (!firebaseUser) {
+        if (firebaseUser) {
+          // User is logged in - fetch user data from Firestore
+          try {
+            const user = await getUser(firebaseUser.uid);
+            if (user) {
+              setCurrentUser(user);
+              setView('HOME');
+            } else {
+              // User exists in Firebase Auth but not in Firestore - might be anonymous child
+              // Check if it's an anonymous user (child login)
+              if (firebaseUser.isAnonymous) {
+                // For anonymous users, we can't get user data directly
+                // They need to login with code again
+                setCurrentUser(null);
+                setView('LOGIN_SELECT');
+              } else {
+                setCurrentUser(null);
+                setView('LOGIN_SELECT');
+              }
+            }
+          } catch (err) {
+            console.error('Error fetching user data:', err);
+            setCurrentUser(null);
+            setView('LOGIN_SELECT');
+          }
+        } else {
+          // No user logged in
           setCurrentUser(null);
           setView('LOGIN_SELECT');
         }
