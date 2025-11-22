@@ -37,21 +37,22 @@ export const useWebRTC = (currentUserId: string, remoteUserId: string | null, is
       return;
     }
 
-    // Only create new connection if we don't have a valid one
-    if (peerConnection.current && peerConnection.current.signalingState !== 'closed') {
-      console.log('Reusing existing peer connection');
-      return; // Don't reinitialize
-    }
-
     // Cleanup any existing closed connection
     if (peerConnection.current) {
       try {
-        peerConnection.current.close();
-      } catch (e) {}
-      peerConnection.current = null;
+        if (peerConnection.current.signalingState === 'closed') {
+          peerConnection.current.close();
+          peerConnection.current = null;
+        } else {
+          console.log('Reusing existing peer connection');
+          return; // Don't reinitialize if connection is still valid
+        }
+      } catch (e) {
+        peerConnection.current = null;
+      }
     }
     
-    // Reset flags
+    // Reset flags for new connection
     offerSentRef.current = false;
     isInitializedRef.current = false;
     
