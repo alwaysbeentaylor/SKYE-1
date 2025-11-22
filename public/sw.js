@@ -2,9 +2,7 @@
 const CACHE_NAME = 'skye-v1';
 const urlsToCache = [
   '/',
-  '/index.html',
-  '/index.tsx',
-  '/App.tsx'
+  '/index.html'
 ];
 
 self.addEventListener('install', (event) => {
