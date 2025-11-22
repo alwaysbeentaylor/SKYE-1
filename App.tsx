@@ -20,7 +20,7 @@ console.log('🔍 Firebase Detection:', {
 
 import { loginParent as loginParentMock, loginChild as loginChildMock, logoutUser as logoutUserMock, getFamilyMembers as getFamilyMembersMock, createChildCode as createChildCodeMock, deleteChild as deleteChildMock, subscribeToFamily as subscribeToFamilyMock, createUser as createUserMock, MOCK_MEMBERS } from './services/mockServices';
 import { loginParent, loginChild, logoutUser, subscribeToAuth, registerParent } from './services/auth';
-import { getFamilyMembers, createChildCode, deleteChild, subscribeToFamily, createFamily, createUser, updateUserStatus } from './services/db';
+import { getFamilyMembers, createChildCode, deleteChild, subscribeToFamily, createFamily, createUser, updateUserStatus, getUser } from './services/db';
 
 import { socketService } from './services/socket';
 import { requestNotificationPermission } from './firebaseConfig';
