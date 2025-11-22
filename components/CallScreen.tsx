@@ -116,11 +116,15 @@ const CallScreen: React.FC<CallScreenProps> = ({ currentUser, remoteUser, isInco
     setTimeout(async () => {
       if (incomingSignal && remoteUser) {
         console.log('Answering call with signal:', incomingSignal);
-        await answerCall(incomingSignal, remoteUser.id);
+        try {
+            await answerCall(incomingSignal, remoteUser.id);
+        } catch (e) {
+            console.error("Answer call failed:", e);
+        }
       } else {
         console.warn('No incoming signal or remoteUser to answer');
       }
-    }, 1500); // Increased delay to ensure WebRTC is ready
+    }, 2000); // Increased delay to ensure WebRTC is ready
   };
 
   const handleHangup = () => {
