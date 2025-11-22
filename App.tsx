@@ -20,7 +20,7 @@ console.log('🔍 Firebase Detection:', {
 
 import { loginParent as loginParentMock, loginChild as loginChildMock, logoutUser as logoutUserMock, getFamilyMembers as getFamilyMembersMock, createChildCode as createChildCodeMock, deleteChild as deleteChildMock, subscribeToFamily as subscribeToFamilyMock, createUser as createUserMock, MOCK_MEMBERS } from './services/mockServices';
 import { loginParent, loginChild, logoutUser, subscribeToAuth, registerParent } from './services/auth';
-import { getFamilyMembers, createChildCode, deleteChild, subscribeToFamily, createFamily, createUser } from './services/db';
+import { getFamilyMembers, createChildCode, deleteChild, subscribeToFamily, createFamily, createUser, updateUserStatus } from './services/db';
 
 import { socketService } from './services/socket';
 import { requestNotificationPermission } from './firebaseConfig';
@@ -73,6 +73,20 @@ const App: React.FC = () => {
     if (currentUser && currentUser.familyId) {
         // 1. Connect to Socket
         socketService.connect(currentUser.id, currentUser.familyId);
+
+        // Update status to ONLINE in Firestore
+        if (!USE_MOCK) {
+          updateUserStatus(currentUser.id, UserStatus.ONLINE);
+        }
+
+        // Listen for realtime status updates from socket
+        socketService.onFamilyUpdate((data) => {
+          if (data.userId && data.status) {
+             setMembers(prev => prev.map(m => 
+               m.id === data.userId ? { ...m, status: data.status } : m
+             ));
+          }
+        });
 
         // 2. Subscribe to Family Members
         const unsubFamily = USE_MOCK 
@@ -140,6 +154,9 @@ const App: React.FC = () => {
         }
 
         return () => {
+            if (!USE_MOCK && currentUser) {
+              updateUserStatus(currentUser.id, UserStatus.OFFLINE);
+            }
             socketService.disconnect();
             unsubFamily();
         };
