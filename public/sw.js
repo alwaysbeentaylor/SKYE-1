@@ -1,8 +1,10 @@
 // Service Worker voor SKYE PWA
-const CACHE_NAME = 'skye-v1';
+const CACHE_NAME = 'skye-v2';
 const urlsToCache = [
   '/',
-  '/index.html'
+  '/index.html',
+  '/icon.svg',
+  '/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -10,9 +12,12 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Service Worker: Cache opened');
-        return cache.addAll(urlsToCache);
+        return cache.addAll(urlsToCache).catch((err) => {
+          console.log('Service Worker: Some files failed to cache', err);
+        });
       })
   );
+  self.skipWaiting(); // Activate immediately
 });
 
 self.addEventListener('fetch', (event) => {
@@ -41,6 +46,8 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
+    }).then(() => {
+      return self.clients.claim(); // Take control of all pages immediately
     })
   );
 });

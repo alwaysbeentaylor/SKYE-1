@@ -27,6 +27,7 @@ import { requestNotificationPermission } from './firebaseConfig';
 
 import BubbleCanvas from './components/BubbleCanvas';
 import CallScreen from './components/CallScreen';
+import InstallPrompt from './components/InstallPrompt';
 import { Plus, Settings, LogOut, Lock, Smartphone, ArrowRight, MapPin, Phone, X, Trash2, Edit2, Users } from 'lucide-react';
 
 type ViewState = 'LOGIN_SELECT' | 'LOGIN_PARENT' | 'LOGIN_CHILD' | 'REGISTER_PARENT' | 'HOME' | 'CALL';
@@ -59,74 +60,32 @@ const App: React.FC = () => {
   // --- Auth Observer (Firebase only) ---
   useEffect(() => {
     if (!USE_MOCK) {
-      let mounted = true;
-      let timeoutId: NodeJS.Timeout;
-      
-      try {
-        const unsubscribe = subscribeToAuth(async (firebaseUser) => {
-          if (!mounted) return;
-          
-          // Clear any pending timeouts
-          if (timeoutId) clearTimeout(timeoutId);
-          
-          // Add small delay to prevent race conditions
-          timeoutId = setTimeout(async () => {
-            if (!mounted) return;
-            
-            try {
-              if (firebaseUser) {
-                // User is logged in - fetch user data from Firestore
-                const user = await getUser(firebaseUser.uid);
-                if (!mounted) return;
-                
-                if (user) {
-                  setCurrentUser(user);
-                  setView('HOME');
-                } else {
-                  // User exists in Firebase Auth but not in Firestore
-                  setCurrentUser(null);
-                  setView('LOGIN_SELECT');
-                }
-              } else {
-                // No user logged in
-                setCurrentUser(null);
-                setView('LOGIN_SELECT');
-              }
-            } catch (err) {
-              console.error('Error in auth observer:', err);
-              if (mounted) {
-                setCurrentUser(null);
-                setView('LOGIN_SELECT');
-              }
-            } finally {
-              if (mounted) {
-                setIsInitializing(false);
-              }
+      const unsubscribe = subscribeToAuth(async (firebaseUser) => {
+        if (firebaseUser) {
+          try {
+            const user = await getUser(firebaseUser.uid);
+            if (user) {
+              setCurrentUser(user);
+              setView('HOME');
+            } else {
+              setCurrentUser(null);
+              setView('LOGIN_SELECT');
             }
-          }, 100);
-        });
-        
-        // Set timeout to stop initializing after 3 seconds max
-        setTimeout(() => {
-          if (mounted) {
-            setIsInitializing(false);
+          } catch (err) {
+            console.error('Error fetching user:', err);
+            setCurrentUser(null);
+            setView('LOGIN_SELECT');
           }
-        }, 3000);
-        
-        return () => {
-          mounted = false;
-          if (timeoutId) clearTimeout(timeoutId);
-          unsubscribe();
-        };
-      } catch (err) {
-        console.error('Error setting up auth observer:', err);
-        setView('LOGIN_SELECT');
+        } else {
+          setCurrentUser(null);
+          setView('LOGIN_SELECT');
+        }
         setIsInitializing(false);
-      }
+      });
+      return unsubscribe;
     } else {
-      // Mock mode - always show login
-      setView('LOGIN_SELECT');
       setIsInitializing(false);
+      setView('LOGIN_SELECT');
     }
   }, []);
 
@@ -420,6 +379,7 @@ const App: React.FC = () => {
   if (view === 'HOME' && currentUser) {
     return (
       <div className={`relative w-full h-full ${GRADIENTS.background} overflow-hidden`}>
+        <InstallPrompt />
         <BubbleCanvas 
           members={members}
           currentUser={currentUser}

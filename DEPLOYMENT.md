@@ -82,3 +82,4 @@ VITE_SOCKET_URL=http://localhost:3001
 - **Firebase errors:** Check of alle env vars correct zijn in Vercel
 - **Socket connection fails:** Check of VITE_SOCKET_URL correct is (moet HTTPS zijn voor productie)
 
+

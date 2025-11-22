@@ -7,22 +7,37 @@
   "background_color": "#0EA5E9",
   "theme_color": "#0EA5E9",
   "orientation": "portrait-primary",
+  "scope": "/",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☁️</text></svg>",
-      "sizes": "192x192",
+      "src": "/icon.svg",
+      "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☁️</text></svg>",
+      "src": "/icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
   "categories": ["social", "communication"],
-  "screenshots": [],
-  "shortcuts": []
+  "shortcuts": [
+    {
+      "name": "Bel Familie",
+      "short_name": "Bellen",
+      "description": "Start een videogesprek",
+      "url": "/?action=call",
+      "icons": [{ "src": "/icon.svg", "sizes": "96x96" }]
+    }
+  ]
 }
+
 

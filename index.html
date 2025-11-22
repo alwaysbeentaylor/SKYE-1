@@ -6,8 +6,11 @@
     <meta name="description" content="Veilige familie communicatie app voor ouders en kinderen" />
     <meta name="theme-color" content="#0EA5E9" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="SKYE" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon.svg" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/icon.svg" />
     <title>SKYE - Familie Verbinding</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☁️</text></svg>">
     <link rel="manifest" href="/manifest.json" />
@@ -27,6 +30,7 @@
               'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'blob': 'blob 7s infinite',
               'float': 'float 6s ease-in-out infinite',
+              'slide-up': 'slide-up 0.3s ease-out',
             },
             keyframes: {
               blob: {
@@ -38,6 +42,10 @@
               float: {
                 '0%, 100%': { transform: 'translateY(0)' },
                 '50%': { transform: 'translateY(-20px)' },
+              },
+              'slide-up': {
+                '0%': { transform: 'translateY(100%)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
               }
             }
           },
