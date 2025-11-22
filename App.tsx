@@ -136,22 +136,62 @@ const App: React.FC = () => {
                         setIsIncomingCall(true);
                         
                         // Send persistent push notification via service worker
-                        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                            navigator.serviceWorker.controller.postMessage({
-                                type: 'incoming_call',
-                                callerId: caller.id,
-                                callerName: caller.name
+                        if ('serviceWorker' in navigator) {
+                            // Try to get service worker registration
+                            navigator.serviceWorker.ready.then((registration) => {
+                                // Show notification via service worker (works even when app is closed)
+                                registration.showNotification(`${caller.name} belt je!`, {
+                                    body: 'Tik om op te nemen',
+                                    icon: '/icon.svg',
+                                    badge: '/icon.svg',
+                                    tag: `call_${caller.id}`,
+                                    requireInteraction: true,
+                                    data: {
+                                        type: 'incoming_call',
+                                        callerId: caller.id,
+                                        callerName: caller.name,
+                                        notificationId: caller.id
+                                    },
+                                    actions: [
+                                        { action: 'answer', title: '📞 Opnemen' },
+                                        { action: 'decline', title: '❌ Weigeren' }
+                                    ],
+                                    renotify: true
+                                } as any); // Service worker notifications support vibrate, but TypeScript doesn't know
+                                
+                                // Also send message for persistent updates
+                                if (navigator.serviceWorker.controller) {
+                                    navigator.serviceWorker.controller.postMessage({
+                                        type: 'incoming_call',
+                                        callerId: caller.id,
+                                        callerName: caller.name
+                                    });
+                                }
+                            }).catch(err => {
+                                console.log('Service worker not ready, using fallback:', err);
+                                // Fallback: browser notification
+                                if (Notification.permission === 'granted') {
+                                    const notification = new Notification(`${caller.name} belt je!`, { 
+                                        body: 'Tik om op te nemen',
+                                        icon: '/icon.svg',
+                                        tag: `call_${caller.id}`,
+                                        requireInteraction: true
+                                    } as NotificationOptions);
+                                    
+                                    notification.onclick = () => {
+                                        window.focus();
+                                        notification.close();
+                                    };
+                                }
                             });
-                        }
-                        
-                        // Fallback: browser notification if service worker not available
-                        if (Notification.permission === 'granted' && !document.hidden) {
+                        } else if (Notification.permission === 'granted') {
+                            // Fallback: browser notification if service worker not available
                             const notification = new Notification(`${caller.name} belt je!`, { 
                                 body: 'Tik om op te nemen',
                                 icon: '/icon.svg',
                                 tag: `call_${caller.id}`,
                                 requireInteraction: true
-                            });
+                            } as NotificationOptions);
                             
                             notification.onclick = () => {
                                 window.focus();
@@ -238,6 +278,11 @@ const App: React.FC = () => {
             }
             socketService.disconnect();
             unsubFamily();
+            
+            // Remove service worker message listener
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
+            }
         };
     }
   }, [currentUser?.id, currentUser?.familyId]);

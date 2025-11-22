@@ -27,8 +27,9 @@ const CallScreen: React.FC<CallScreenProps> = ({ currentUser, remoteUser, isInco
   // Bepaal éénmalig of deze gebruiker de beller (initiator) is
   const initiatorRef = useRef(!isIncoming);
 
-  // WebRTC Logic - alleen opstarten wanneer het gesprek actief is
-  const shouldInitWebRTC = callStarted && remoteUser !== null;
+  // WebRTC Logic - voor incoming calls: initialiseer direct zodat het klaar is bij answer
+  // Voor outgoing calls: wacht tot callStarted
+  const shouldInitWebRTC = (isIncoming && remoteUser !== null) || (callStarted && remoteUser !== null);
   const { localStream, remoteStream, answerCall, cleanup } = useWebRTC(
     currentUser.id,
     shouldInitWebRTC ? (remoteUser?.id || null) : null,
@@ -109,22 +110,32 @@ const CallScreen: React.FC<CallScreenProps> = ({ currentUser, remoteUser, isInco
   const handleAnswer = async () => {
     onAnswer();
     setStatus('Verbinden...');
-    setCallStarted(true); // This will trigger WebRTC initialization
+    setCallStarted(true);
     
-    // Wait longer for WebRTC to fully initialize (media access + connection setup)
-    // Use a longer delay and pass remoteUserId explicitly
-    setTimeout(async () => {
-      if (incomingSignal && remoteUser) {
-        console.log('Answering call with signal:', incomingSignal);
-        try {
-            await answerCall(incomingSignal, remoteUser.id);
-        } catch (e) {
-            console.error("Answer call failed:", e);
+    // For incoming calls, WebRTC is already initialized, just need to answer
+    if (incomingSignal && remoteUser) {
+      console.log('Answering call with signal:', incomingSignal);
+      
+      // Wait a bit for WebRTC to be fully ready (media tracks initialized)
+      let retries = 0;
+      while (retries < 20) {
+        if (localStream && localStream.getTracks().length > 0) {
+          break; // Media is ready
         }
-      } else {
-        console.warn('No incoming signal or remoteUser to answer');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        retries++;
       }
-    }, 2000); // Increased delay to ensure WebRTC is ready
+      
+      try {
+        await answerCall(incomingSignal, remoteUser.id);
+        console.log('Call answered successfully');
+      } catch (e) {
+        console.error("Answer call failed:", e);
+        setStatus('Fout bij verbinden');
+      }
+    } else {
+      console.warn('No incoming signal or remoteUser to answer');
+    }
   };
 
   const handleHangup = () => {
