@@ -32,6 +32,10 @@ import {
   export const updateUserLocation = async (userId: string, location: any) => {
       await updateDoc(doc(db, "users", userId), { lastLocation: location });
   }
+
+  export const updateFCMToken = async (userId: string, fcmToken: string | null) => {
+      await updateDoc(doc(db, "users", userId), { fcmToken });
+  }
   
   // --- FAMILY OPERATIONS ---
   

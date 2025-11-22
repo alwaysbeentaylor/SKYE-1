@@ -20,7 +20,7 @@ console.log('🔍 Firebase Detection:', {
 
 import { loginParent as loginParentMock, loginChild as loginChildMock, logoutUser as logoutUserMock, getFamilyMembers as getFamilyMembersMock, createChildCode as createChildCodeMock, deleteChild as deleteChildMock, subscribeToFamily as subscribeToFamilyMock, createUser as createUserMock, MOCK_MEMBERS } from './services/mockServices';
 import { loginParent, loginChild, logoutUser, subscribeToAuth, registerParent } from './services/auth';
-import { getFamilyMembers, createChildCode, deleteChild, subscribeToFamily, createFamily, createUser, updateUserStatus, getUser } from './services/db';
+import { getFamilyMembers, createChildCode, deleteChild, subscribeToFamily, createFamily, createUser, updateUserStatus, getUser, updateFCMToken } from './services/db';
 
 import { socketService } from './services/socket';
 import { requestNotificationPermission } from './firebaseConfig';
@@ -135,8 +135,28 @@ const App: React.FC = () => {
                         setIncomingSignal(signal);
                         setIsIncomingCall(true);
                         
-                        if (Notification.permission === 'granted') {
-                            new Notification(`${caller.name} belt je!`, { body: 'Tik om op te nemen' });
+                        // Send persistent push notification via service worker
+                        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                            navigator.serviceWorker.controller.postMessage({
+                                type: 'incoming_call',
+                                callerId: caller.id,
+                                callerName: caller.name
+                            });
+                        }
+                        
+                        // Fallback: browser notification if service worker not available
+                        if (Notification.permission === 'granted' && !document.hidden) {
+                            const notification = new Notification(`${caller.name} belt je!`, { 
+                                body: 'Tik om op te nemen',
+                                icon: '/icon.svg',
+                                tag: `call_${caller.id}`,
+                                requireInteraction: true
+                            });
+                            
+                            notification.onclick = () => {
+                                window.focus();
+                                notification.close();
+                            };
                         }
                     } else {
                         console.warn('Caller not found in members:', callerId, 'Available:', currentMembers.map(m => m.id));
@@ -169,9 +189,47 @@ const App: React.FC = () => {
         
         socketService.onIncomingCall(handleIncomingCall);
 
-        // 4. Request Notification Permission (FCM)
+        // 4. Request Notification Permission (FCM) and store token
         if (!USE_MOCK) {
-          requestNotificationPermission(currentUser.id);
+          requestNotificationPermission(currentUser.id).then((token) => {
+            if (token) {
+              // Store FCM token in Firestore for server-side push notifications
+              updateFCMToken(currentUser.id, token).catch(err => {
+                console.error('Error storing FCM token:', err);
+              });
+            }
+          });
+        }
+        
+        // Listen for service worker messages (answer/decline from notification)
+        const handleServiceWorkerMessage = (event: MessageEvent) => {
+          if (event.data && event.data.type === 'answer_call') {
+            const callerId = event.data.callerId;
+            if (isIncomingCall && activeCallUser?.id === callerId) {
+              // User clicked answer in notification
+              setIsIncomingCall(false);
+              setView('CALL');
+            }
+          } else if (event.data && event.data.type === 'decline_call') {
+            const callerId = event.data.callerId;
+            if (activeCallUser?.id === callerId) {
+              setIsIncomingCall(false);
+              setActiveCallUser(null);
+              setIncomingSignal(null);
+              
+              // Stop notification
+              if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                  type: 'stop_call_notification',
+                  callerId: callerId
+                });
+              }
+            }
+          }
+        };
+        
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
         }
 
         return () => {
@@ -366,10 +424,26 @@ const App: React.FC = () => {
           setIsIncomingCall(false);
           setActiveCallUser(null);
           setIncomingSignal(null);
+          
+          // Stop persistent notification
+          if (activeCallUser && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({
+              type: 'stop_call_notification',
+              callerId: activeCallUser.id
+            });
+          }
         }}
         onAnswer={() => {
           setIsIncomingCall(false);
           setView('CALL');
+          
+          // Stop persistent notification when call is answered
+          if (activeCallUser && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({
+              type: 'stop_call_notification',
+              callerId: activeCallUser.id
+            });
+          }
         }}
       />
     );
