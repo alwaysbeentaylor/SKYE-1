@@ -1,0 +1,9 @@
+{
+  "name": "SKYE",
+  "description": "A physics-based family communication app featuring floating contact bubbles, video calling, and real-time status tracking.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
