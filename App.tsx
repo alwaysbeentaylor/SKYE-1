@@ -36,6 +36,7 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [family, setFamily] = useState<Family | null>(null);
   const [members, setMembers] = useState<User[]>([]);
+  const [isInitializing, setIsInitializing] = useState(true);
   
   // Login Form State
   const [email, setEmail] = useState('');
@@ -97,9 +98,20 @@ const App: React.FC = () => {
                 setCurrentUser(null);
                 setView('LOGIN_SELECT');
               }
+            } finally {
+              if (mounted) {
+                setIsInitializing(false);
+              }
             }
           }, 100);
         });
+        
+        // Set timeout to stop initializing after 3 seconds max
+        setTimeout(() => {
+          if (mounted) {
+            setIsInitializing(false);
+          }
+        }, 3000);
         
         return () => {
           mounted = false;
@@ -109,10 +121,12 @@ const App: React.FC = () => {
       } catch (err) {
         console.error('Error setting up auth observer:', err);
         setView('LOGIN_SELECT');
+        setIsInitializing(false);
       }
     } else {
       // Mock mode - always show login
       setView('LOGIN_SELECT');
+      setIsInitializing(false);
     }
   }, []);
 
