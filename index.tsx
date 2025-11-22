@@ -1,8 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import ErrorBoundary from './components/ErrorBoundary';
 
-// Register Service Worker for PWA
+// Register Service Worker for PWA (non-blocking)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
@@ -10,6 +11,7 @@ if ('serviceWorker' in navigator) {
         console.log('Service Worker registered:', registration);
       })
       .catch((error) => {
+        // Don't block app if service worker fails
         console.log('Service Worker registration failed:', error);
       });
   });
@@ -23,6 +25,8 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>
 );

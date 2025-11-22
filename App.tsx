@@ -59,46 +59,57 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!USE_MOCK) {
       let mounted = true;
-      const unsubscribe = subscribeToAuth(async (firebaseUser) => {
-        if (!mounted) return;
-        
-        if (firebaseUser) {
-          // User is logged in - fetch user data from Firestore
-          try {
-            const user = await getUser(firebaseUser.uid);
-            if (mounted && user) {
-              setCurrentUser(user);
-              setView('HOME');
-            } else if (mounted) {
-              // User exists in Firebase Auth but not in Firestore - might be anonymous child
-              if (firebaseUser.isAnonymous) {
-                // For anonymous users, we can't get user data directly
+      let timeoutId: NodeJS.Timeout;
+      
+      try {
+        const unsubscribe = subscribeToAuth(async (firebaseUser) => {
+          if (!mounted) return;
+          
+          // Clear any pending timeouts
+          if (timeoutId) clearTimeout(timeoutId);
+          
+          // Add small delay to prevent race conditions
+          timeoutId = setTimeout(async () => {
+            if (!mounted) return;
+            
+            try {
+              if (firebaseUser) {
+                // User is logged in - fetch user data from Firestore
+                const user = await getUser(firebaseUser.uid);
+                if (!mounted) return;
+                
+                if (user) {
+                  setCurrentUser(user);
+                  setView('HOME');
+                } else {
+                  // User exists in Firebase Auth but not in Firestore
+                  setCurrentUser(null);
+                  setView('LOGIN_SELECT');
+                }
+              } else {
+                // No user logged in
                 setCurrentUser(null);
                 setView('LOGIN_SELECT');
-              } else {
+              }
+            } catch (err) {
+              console.error('Error in auth observer:', err);
+              if (mounted) {
                 setCurrentUser(null);
                 setView('LOGIN_SELECT');
               }
             }
-          } catch (err) {
-            console.error('Error fetching user data:', err);
-            if (mounted) {
-              setCurrentUser(null);
-              setView('LOGIN_SELECT');
-            }
-          }
-        } else {
-          // No user logged in
-          if (mounted) {
-            setCurrentUser(null);
-            setView('LOGIN_SELECT');
-          }
-        }
-      });
-      return () => {
-        mounted = false;
-        unsubscribe();
-      };
+          }, 100);
+        });
+        
+        return () => {
+          mounted = false;
+          if (timeoutId) clearTimeout(timeoutId);
+          unsubscribe();
+        };
+      } catch (err) {
+        console.error('Error setting up auth observer:', err);
+        setView('LOGIN_SELECT');
+      }
     } else {
       // Mock mode - always show login
       setView('LOGIN_SELECT');
@@ -346,9 +357,15 @@ const App: React.FC = () => {
 
   // CALL SCREEN
   if (view === 'CALL' || isIncomingCall) {
+    if (!currentUser || !activeCallUser) {
+      // Safety check - if we're in call view but missing data, go back to home
+      setView('HOME');
+      setIsIncomingCall(false);
+      return null;
+    }
     return (
       <CallScreen 
-        currentUser={currentUser!}
+        currentUser={currentUser}
         remoteUser={activeCallUser}
         isIncoming={isIncomingCall}
         incomingSignal={incomingSignal}
