@@ -567,6 +567,18 @@ const App: React.FC = () => {
     );
   }
 
+  // Loading state during initialization
+  if (isInitializing && !USE_MOCK) {
+    return (
+      <div className={`w-full h-full ${GRADIENTS.background} flex items-center justify-center`}>
+        <div className="text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-sky-400 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-white font-bold">Laden...</p>
+        </div>
+      </div>
+    );
+  }
+
   // LOGIN SCREENS
   return (
     <div className={`w-full h-full ${GRADIENTS.background} flex items-center justify-center p-6 relative`}>
