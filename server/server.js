@@ -9,9 +9,12 @@ app.use(cors());
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // Allow all origins for dev
-    methods: ["GET", "POST"]
-  }
+    origin: "*", // Allow all origins
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling'], // Explicit transports
+  allowEIO3: true
 });
 
 // Store active users: { userId: socketId }

@@ -11,6 +11,9 @@ class SocketService {
     this.socket = io(SERVER_URL, {
       auth: { userId, familyId },
       reconnectionAttempts: 5,
+      transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
+      upgrade: true,
+      rememberUpgrade: true
     });
 
     this.socket.on('connect', () => {
