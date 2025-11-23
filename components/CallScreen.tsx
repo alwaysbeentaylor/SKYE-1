@@ -41,15 +41,40 @@ const CallScreen: React.FC<CallScreenProps> = ({ currentUser, remoteUser, isInco
   // Video Streams Binding
   useEffect(() => {
     if (localVideoRef.current && localStream) {
-        localVideoRef.current.srcObject = localStream;
+        const video = localVideoRef.current;
+        video.srcObject = localStream;
+        
+        // Ensure video plays
+        video.play().catch(err => {
+          console.error('Error playing local video:', err);
+        });
+    } else if (localVideoRef.current && !localStream) {
+        localVideoRef.current.srcObject = null;
     }
   }, [localStream]);
 
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
-        remoteVideoRef.current.srcObject = remoteStream;
-        setIsConnected(true);
-        setStatus('Verbonden');
+        const video = remoteVideoRef.current;
+        video.srcObject = remoteStream;
+        
+        // Ensure video plays
+        video.play().catch(err => {
+          console.error('Error playing remote video:', err);
+        });
+        
+        // Check if stream has active tracks
+        const hasActiveTracks = remoteStream.getTracks().some(track => track.readyState === 'live');
+        if (hasActiveTracks) {
+          setIsConnected(true);
+          setStatus('Verbonden');
+          console.log('Remote stream connected with', remoteStream.getTracks().length, 'tracks');
+        } else {
+          console.warn('Remote stream has no active tracks');
+        }
+    } else if (remoteVideoRef.current && !remoteStream) {
+        // Clear video when stream is removed
+        remoteVideoRef.current.srcObject = null;
     }
   }, [remoteStream]);
 

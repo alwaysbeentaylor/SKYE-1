@@ -1,11 +1,32 @@
 import { useEffect, useRef, useState } from 'react';
 import { socketService } from '../services/socket';
 
-const STUN_SERVERS = {
+// WebRTC ICE Servers - STUN + TURN for better connectivity
+const ICE_SERVERS = {
   iceServers: [
+    // STUN servers (for NAT traversal)
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:global.stun.twilio.com:3478' }
-  ]
+    { urls: 'stun:global.stun.twilio.com:3478' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    // Free TURN servers (for relay when direct connection fails)
+    { 
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    { 
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    { 
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    }
+  ],
+  iceCandidatePoolSize: 10 // Pre-gather more candidates
 };
 
 export const useWebRTC = (currentUserId: string, remoteUserId: string | null, isInitiator: boolean) => {
@@ -56,24 +77,61 @@ export const useWebRTC = (currentUserId: string, remoteUserId: string | null, is
     offerSentRef.current = false;
     isInitializedRef.current = false;
     
-    const pc = new RTCPeerConnection(STUN_SERVERS);
+    const pc = new RTCPeerConnection(ICE_SERVERS);
     peerConnection.current = pc;
     console.log('Created new peer connection, isInitiator:', isInitiator);
 
     // Handle ICE Candidates
     pc.onicecandidate = (event) => {
       if (event.candidate && remoteUserId) {
+        console.log('ICE candidate:', event.candidate.type, event.candidate.protocol);
         socketService.emitIceCandidate({
           targetId: remoteUserId,
           candidate: event.candidate
         });
+      } else if (!event.candidate) {
+        console.log('ICE gathering complete');
+      }
+    };
+
+    // Monitor ICE Connection State
+    pc.oniceconnectionstatechange = () => {
+      const state = pc.iceConnectionState;
+      console.log('ICE connection state:', state);
+      
+      if (state === 'failed' || state === 'disconnected') {
+        console.warn('ICE connection failed, attempting ICE restart...');
+        // Try to restart ICE
+        if (pc.signalingState === 'stable') {
+          pc.restartIce();
+        }
+      }
+      
+      if (state === 'connected' || state === 'completed') {
+        console.log('ICE connection established successfully');
+      }
+    };
+
+    // Monitor Connection State
+    pc.onconnectionstatechange = () => {
+      console.log('Peer connection state:', pc.connectionState);
+      if (pc.connectionState === 'failed') {
+        console.error('Peer connection failed');
       }
     };
 
     // Handle Remote Stream
     pc.ontrack = (event) => {
       console.log('Received remote stream:', event.streams[0]);
-      setRemoteStream(event.streams[0]);
+      console.log('Remote tracks:', event.streams[0].getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState })));
+      
+      // Ensure we use the first stream
+      const stream = event.streams[0];
+      if (stream && stream.getTracks().length > 0) {
+        setRemoteStream(stream);
+      } else {
+        console.warn('Remote stream has no tracks');
+      }
     };
 
     // Get Local Stream with better error handling
